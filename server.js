@@ -36,6 +36,11 @@ if (!process.env.JWT_SECRET) {
   if (!envContent.includes("ADMIN_PASSWORD=")) {
     envContent += "ADMIN_PASSWORD=putrabakwan17\n";
   }
+  
+  // Add custom domain if not exists
+  if (!envContent.includes("CUSTOM_DOMAIN=")) {
+    envContent += "CUSTOM_DOMAIN=ptraazxtt.my.id\n";
+  }
 
   // Add JWT secret
   envContent += `JWT_SECRET=${jwtSecret}\n`;
@@ -44,12 +49,52 @@ if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = jwtSecret;
   process.env.ADMIN_USERNAME = process.env.ADMIN_USERNAME || "putraasw";
   process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "putrabakwan17";
-  console.log("JWT Secret and admin credentials saved to .env");
+  process.env.CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || "ptraazxtt.my.id";
+  console.log("JWT Secret, admin credentials, and custom domain saved to .env");
 }
 
+// CORS Configuration with custom domain support
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001', 
+      'http://localhost:5173',
+      'http://localhost:8080',
+      'https://ptraazxtt.my.id',
+      'http://ptraazxtt.my.id',
+      `https://${process.env.CUSTOM_DOMAIN}`,
+      `http://${process.env.CUSTOM_DOMAIN}`
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Range']
+};
+
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", "https://ptraazxtt.my.id", `https://${process.env.CUSTOM_DOMAIN}`],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      mediaSrc: ["'self'", "https://ptraazxtt.my.id", `https://${process.env.CUSTOM_DOMAIN}`],
+    },
+  },
+}));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -83,7 +128,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Enhanced audio streaming endpoint
+// Enhanced audio streaming endpoint with custom domain support
 app.get("/api/audio/:filename", (req, res) => {
   const filename = req.params.filename;
   const audioPath = path.join(__dirname, "uploads", "songs", filename);
@@ -91,10 +136,27 @@ app.get("/api/audio/:filename", (req, res) => {
   console.log(`Audio request: ${filename}`);
   console.log(`Looking for file at: ${audioPath}`);
 
-  // Set CORS headers
-  res.header("Access-Control-Allow-Origin", "*");
+  // Set CORS headers with custom domain support
+  const allowedOrigins = [
+    'https://ptraazxtt.my.id',
+    'http://ptraazxtt.my.id',
+    `https://${process.env.CUSTOM_DOMAIN}`,
+    `http://${process.env.CUSTOM_DOMAIN}`,
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173'
+  ];
+
+  const origin = req.get('Origin');
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  } else {
+    res.header("Access-Control-Allow-Origin", "https://ptraazxtt.my.id");
+  }
+  
   res.header("Access-Control-Allow-Methods", "GET");
   res.header("Access-Control-Allow-Headers", "Content-Type, Range");
+  res.header("Access-Control-Allow-Credentials", "true");
 
   // Check if file exists
   if (!fs.existsSync(audioPath)) {
@@ -140,7 +202,7 @@ app.get("/api/audio/:filename", (req, res) => {
   }
 });
 
-// Enhanced thumbnail serving endpoint with proper CORS headers
+// Enhanced thumbnail serving endpoint with custom domain support
 app.get("/api/thumbnails/:filename", (req, res) => {
   const filename = decodeURIComponent(req.params.filename);
   const thumbnailPath = path.join(__dirname, "uploads", "thumbnails", filename);
@@ -148,10 +210,27 @@ app.get("/api/thumbnails/:filename", (req, res) => {
   console.log(`Thumbnail request: ${filename}`);
   console.log(`Looking for file at: ${thumbnailPath}`);
 
-  // Set CORS headers first
-  res.header("Access-Control-Allow-Origin", "*");
+  // Set CORS headers with custom domain support
+  const allowedOrigins = [
+    'https://ptraazxtt.my.id',
+    'http://ptraazxtt.my.id',
+    `https://${process.env.CUSTOM_DOMAIN}`,
+    `http://${process.env.CUSTOM_DOMAIN}`,
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173'
+  ];
+
+  const origin = req.get('Origin');
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  } else {
+    res.header("Access-Control-Allow-Origin", "https://ptraazxtt.my.id");
+  }
+  
   res.header("Access-Control-Allow-Methods", "GET");
   res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Credentials", "true");
 
   // Check if file exists
   if (!fs.existsSync(thumbnailPath)) {
@@ -209,10 +288,27 @@ function serveThumbnail(filePath, res) {
     // Get file stats for proper headers
     const stats = fs.statSync(filePath);
 
-    // Set proper headers with CORS
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    // Set proper headers with CORS and custom domain support
+    const allowedOrigins = [
+      'https://ptraazxtt.my.id',
+      'http://ptraazxtt.my.id',
+      `https://${process.env.CUSTOM_DOMAIN}`,
+      `http://${process.env.CUSTOM_DOMAIN}`,
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173'
+    ];
+
+    const origin = req.get('Origin');
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", "https://ptraazxtt.my.id");
+    }
+    
     res.setHeader("Access-Control-Allow-Methods", "GET");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Content-Type", contentType);
     res.setHeader("Content-Length", stats.size);
     res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
@@ -506,22 +602,42 @@ const authenticateAdmin = (req, res, next) => {
   });
 };
 
-// Middleware untuk proteksi file lagu (anti-scraping)
+// Middleware untuk proteksi file lagu (updated for custom domain)
 const protectSongFiles = (req, res, next) => {
   const referer = req.get("Referer");
   const userAgent = req.get("User-Agent");
+  const origin = req.get("Origin");
 
-  // Cek apakah request dari browser normal dan dari domain yang sama
-  if (
-    !referer ||
-    !userAgent ||
-    userAgent.includes("bot") ||
-    userAgent.includes("crawler")
-  ) {
-    return res.status(403).json({ error: "Access denied" });
+  // List of allowed domains
+  const allowedDomains = [
+    'localhost',
+    '127.0.0.1',
+    'ptraazxtt.my.id',
+    process.env.CUSTOM_DOMAIN
+  ];
+
+  // Check if request is from allowed domain
+  let isAllowedDomain = false;
+  if (referer || origin) {
+    const requestDomain = referer || origin;
+    isAllowedDomain = allowedDomains.some(domain => 
+      requestDomain.includes(domain)
+    );
   }
 
-  next();
+  // Allow if from allowed domain and normal browser
+  if (isAllowedDomain && userAgent && !userAgent.includes("bot") && !userAgent.includes("crawler")) {
+    return next();
+  }
+
+  console.log('File access blocked:', {
+    referer,
+    origin,
+    userAgent: userAgent?.substring(0, 50),
+    isAllowedDomain
+  });
+
+  return res.status(403).json({ error: "Access denied" });
 };
 
 // ========== PUBLIC ROUTES (USER) ==========
@@ -1438,12 +1554,10 @@ function startServer() {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`Custom Domain: ${process.env.CUSTOM_DOMAIN || "ptraazxtt.my.id"}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
-    console.log(
-      `Audio endpoint: http://localhost:${PORT}/api/audio/[filename]`
-    );
-    console.log(
-      `Thumbnail endpoint: http://localhost:${PORT}/api/thumbnails/[filename]`
-    );
+    console.log(`Production URL: https://${process.env.CUSTOM_DOMAIN || "ptraazxtt.my.id"}`);
+    console.log(`Audio endpoint: ${process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : `http://localhost:${PORT}`}/api/audio/[filename]`);
+    console.log(`Thumbnail endpoint: ${process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : `http://localhost:${PORT}`}/api/thumbnails/[filename]`);
   });
 }
